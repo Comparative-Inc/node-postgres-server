@@ -92,6 +92,15 @@ Writer.prototype.addString = function(string) {
   this.offset += len;
   return this;
 };
+Writer.prototype.addPString = function(string) {
+  string = string || "";
+  var len = Buffer.byteLength(string);
+  this._ensure(len + 4);
+  this.addInt32(len);
+  this.buffer.write(string, this.offset);
+  this.offset += len;
+  return this;
+};
 
 Writer.prototype.getByteLength = function() {
   return this.offset - 5;
