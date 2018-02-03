@@ -52,7 +52,7 @@ server.on('client_execute',(client,statement,max_rows) => {
   console.log("client_execute:",statement, { max_rows });
   const rows = [["foo"]];
   client.sendDataRowList(rows,format_list);
-  client.sendCommandComplete();
+  client.sendCommandComplete("SELECT",null,1);
 });
 server.on('client_flush',client => {
   console.log("client_flush");

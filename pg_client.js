@@ -306,15 +306,19 @@ PgClient.prototype.sendDataRowList = function(row_list,field_list) {
   });
 };
 PgClient.prototype.sendCommandComplete = function(tag,oid,rows) {
-  let s = tag;
+  let s = tag || "SELECT";
+  if (rows == undefined && typeof oid == 'number') {
+    rows = oid;
+  }
   if (tag == 'INSERT') {
     s += " " + (oid || "0");
   }
-  s += " rows";
+  s += " " + (rows || "0");
   this._buffer_writer.addCString(s);
   const buf = this._buffer_writer.flush('C');
   this._socket.write(buf);
 }
+
 
 function write_error_map(error_map,writer) {
   Object.keys(error_map).forEach(k => {
