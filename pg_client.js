@@ -311,20 +311,18 @@ PgClient.prototype.sendDataRowList = function(row_list,field_list) {
     this._socket.write(buf);
   });
 };
-PgClient.prototype.sendCommandComplete = function(tag,oid,rows) {
+PgClient.prototype.sendCommandComplete = function(tag,a,b) {
   let s = tag || "SELECT";
-  if (rows == undefined && typeof oid == 'number') {
-    rows = oid;
+  if (a) {
+    s += " " + a;
   }
-  if (tag == 'INSERT') {
-    s += " " + (oid || "0");
+  if (b) {
+    s += " " + b;
   }
-  s += " " + (rows || "0");
   this._buffer_writer.addCString(s);
   const buf = this._buffer_writer.flush('C');
   this._socket.write(buf);
-}
-
+};
 
 function write_error_map(error_map,writer) {
   Object.keys(error_map).forEach(k => {
