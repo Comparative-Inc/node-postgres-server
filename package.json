@@ -1,6 +1,6 @@
 {
   "name": "node-postgres-server",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Postgresql server side protocol implementation",
   "main": "pg_server.js",
   "scripts": {

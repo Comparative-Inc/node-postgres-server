@@ -38,15 +38,14 @@ PgServer.prototype.listen = function(port,done) {
 PgServer.prototype._onServerConnection = function(socket) {
   const client = new PgClient({ socket, server: this });
 
-  this.emit('server_connection',client);
+  this.emit('new_client',client);
 };
 PgServer.prototype._onServerError = function(err) {
-  this.emit('server_error',err);
+  this.emit('error',err);
 };
 PgServer.prototype._onServerClose = function() {
-  console.error("_onServerClose:");
-  this.emit('server_close');
+  this.emit('close');
 };
 PgServer.prototype._onServerListening = function() {
-  this.emit('server_listening');
+  this.emit('listening');
 };

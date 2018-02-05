@@ -1,5 +1,7 @@
 'use strict';
 
+const util = require('util');
+const EventEmitter = require('events').EventEmitter;
 const PacketReader = require('./packet_reader.js');
 const BufferWriter = require('./buffer_writer.js');
 const BufferReader = require('./buffer_reader.js');
@@ -29,6 +31,8 @@ function PgClient(options) {
   }
   return this;
 }
+util.inherits(PgClient,EventEmitter);
+
 PgClient.prototype.getStatementByName = function(name) {
   if (!name) {
     name = "";
@@ -46,23 +50,23 @@ PgClient.prototype.end = function() {
 }
 
 PgClient.prototype._onSocketConnect = function() {
-  this._server.emit('socket_connect',this);
+  this.emit('socket_connect');
 };
 PgClient.prototype._onSocketClose = function() {
-  this._server.emit('socket_close',this);
+  this.emit('socket_close');
 };
 PgClient.prototype._onSocketEnd = function() {
-  this._server.emit('socket_end',this);
+  this.emit('socket_end');
 };
 PgClient.prototype._onSocketError = function(err) {
-  this._server.emit('socket_error',this,err);
+  this.emit('socket_error',err);
 };
 PgClient.prototype._onSocketData = function(buf) {
   this._reader.addChunk(buf);
   this._pumpPackets();
 };
 PgClient.prototype._onSocketTimeout = function() {
-  this._server.emit('socket_timeout',this);
+  this.emit('socket_timeout');
 };
 PgClient.prototype._pumpPackets = function() {
   if (!this._handshake_complete) {
@@ -78,10 +82,10 @@ PgClient.prototype._pumpPackets = function() {
         const params = buf_to_kv(key_value_buffer);
         this._reader.headerSize = 1;
         this._handshake_complete = true;
-        this._server.emit('client_connect',this,params);
+        this.emit('connect',params);
       } else {
         console.error("PgClient: handshake unknown client version");
-        this._server.emit('protocol_error',this,buffer);
+        this.emit('protocol_error',buffer);
       }
     }
   } else {
@@ -97,16 +101,16 @@ PgClient.prototype._handlePacket = function(header,buffer) {
   switch(header) {
     case 'p': {
       const password = reader.readCString();
-      this._server.emit('client_password',this,password);
+      this.emit('password',password);
       break;
     }
     case 'Q': {
       const query = reader.readCString();
-      this._server.emit('client_query',this,query);
+      this.emit('query',query);
       break;
     }
     case 'X': {
-      this._server.emit('client_terminate',this);
+      this.emit('terminate');
       break;
     }
     case 'P': {
@@ -122,7 +126,7 @@ PgClient.prototype._handlePacket = function(header,buffer) {
       };
 
       this._prepared_statement_map[name] = statement;
-      this._server.emit('client_parse',this,statement);
+      this.emit('parse',statement);
       this.sendParseComplete();
       break;
     }
@@ -142,7 +146,7 @@ PgClient.prototype._handlePacket = function(header,buffer) {
         const result_format_count = reader.readInt16();
         statement.result_format_list = reader.readInt16List(result_format_count);
 
-        this._server.emit('client_bind',this,statement);
+        this.emit('bind',statement);
         this.sendBindComplete();
       } else {
         this.sendErrorResponse({
@@ -159,7 +163,7 @@ PgClient.prototype._handlePacket = function(header,buffer) {
       if (type == 'S') {
         const statement = this.getStatementByName(name);
         if (statement) {
-          this._server.emit('client_describe_statement',this,statement);
+          this.emit('describe_statement',statement);
         } else {
           this.sendErrorResponse({
             severity: 'ERROR',
@@ -170,7 +174,7 @@ PgClient.prototype._handlePacket = function(header,buffer) {
       } else if (type == 'P') {
         const statement = this.getStatementByPortal(name);
         if (statement) {
-          this._server.emit('client_describe_portal',this,statement);
+          this.emit('describe_portal',statement);
         } else {
           this.sendErrorResponse({
             severity: 'ERROR',
@@ -192,7 +196,7 @@ PgClient.prototype._handlePacket = function(header,buffer) {
       const max_rows = reader.readInt32();
       const statement = this.getStatementByPortal(portal);
       if (statement) {
-        this._server.emit('client_execute',this,statement,max_rows);
+        this.emit('execute',statement,max_rows);
       } else {
         this.sendErrorResponse({
           severity: 'ERROR',
@@ -203,14 +207,16 @@ PgClient.prototype._handlePacket = function(header,buffer) {
       break;
     }
     case 'H':
-      this._server.emit('client_flush',this);
+      this.emit('flush');
       break;
     case 'S':
-      this._server.emit('client_sync',this)
+      this.emit('sync')
       break;
-    default:
-      console.error("PgServer: unhandled packet type:",header);
+    default: {
+      console.error("PgClient: unhandled packet type:",header);
+      this.emit('error',new Error("Unhanded packet type: " + header));
       break;
+    }
   }
 };
 PgClient.prototype.sendAuthenticationOk = function() {
