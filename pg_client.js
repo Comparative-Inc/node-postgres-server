@@ -229,6 +229,15 @@ PgClient.prototype.sendAuthenticationCleartextPassword = function() {
   const buf = this._buffer_writer.flush('R');
   this._socket.write(buf);
 };
+
+PgClient.prototype.sendParameterStatus = function (inName, inValue) {
+  this._buffer_writer.addCString(inName);
+  // this should take into consideration the value type
+  this._buffer_writer.addCString(inValue);
+  const buf = this._buffer_writer.flush('S');
+  this._socket.write(buf);
+};
+
 PgClient.prototype.sendReadyForQuery = function(status) {
   if (!status) {
     status = 'I';
