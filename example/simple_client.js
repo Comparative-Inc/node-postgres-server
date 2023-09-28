@@ -1,15 +1,22 @@
 'use strict';
 
-const { Client } = require('pg');
-const client = new Client({
-  user: 'test',
-  password: 'test',
-  database: 'test',
-});
+const { Client, Query } = require('pg');
+
+const inputArgs = require('minimist')(process.argv.slice(2));
+
+const connectConfig = {
+  user: inputArgs.user || inputArgs.u || 'test',
+  password: inputArgs.password || inputArgs.p || 'test',
+  database: inputArgs.database || inputArgs.db || 'test',
+  host: inputArgs.server || inputArgs.s || 'localhost',
+  port: inputArgs.port || 5432,
+};
+
+const client = new Client(connectConfig);
 
 client.connect();
 
-client.query("SELECT $1::text as message",["Hello world!"],(err,res) => {
+client.query(inputArgs.sql,[''], (err, res) => {
   if (err) {
     console.error(err);
   } else {

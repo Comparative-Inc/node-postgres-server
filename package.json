@@ -17,6 +17,9 @@
   },
   "homepage": "https://github.com/jim-lake/node-postgres-server",
   "devDependencies": {
-    "pg": "^7.4.1"
+    "pg": "^8.11.3"
+  },
+  "dependencies": {
+    "minimist": "^1.2.8"
   }
 }

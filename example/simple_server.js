@@ -1,12 +1,31 @@
 'use strict';
 
 const PgServer = require('../pg_server.js');
+const lcdb = require('lightning-db');
 
 const server = new PgServer();
 
-const format_list = [
-  { name: "message", type: 'text' },
-];
+const resultMatrix = {format: [], rows: []};
+
+function _lcdbQuery(query) {
+  const result = lcdb.query(query);
+  const rowMatrix = [];
+  const formatList = [];
+  result.columns.forEach((col) => {
+    formatList.push({
+      name: col.name,
+      type: typeof col.data[0],
+    });
+  });
+  for (let i = 0; i < result.rows; i++) {
+    const row = [];
+    result.columns.forEach((col) => {
+      row.push(col.data[i]);
+    });
+    rowMatrix.push(row);
+  }
+  return {format: formatList, rows: rowMatrix};
+}
 
 server.on('listening',() => {
   console.log("Server listening")
@@ -19,8 +38,11 @@ server.on('error',err => {
   console.error("Server error:",err);
 });
 
-server.listen(5432,(err) => {
-  console.log("Postgres Server listen started on :5432");
+const inputArgs = require('minimist')(process.argv.slice(2));
+
+const port = inputArgs.port || inputArgs.p || 5432;
+server.listen(port,(err) => {
+  console.log("Postgres Server listen started on :", port);
 });
 
 function _handleNewClient(client) {
@@ -43,18 +65,21 @@ function _handleNewClient(client) {
   });
   client.on('bind',statement => {
     console.log("client_bind:",statement);
+    const qresult = _lcdbQuery(statement.query);
+    resultMatrix.format = qresult.format;
+    resultMatrix.rows = qresult.rows;
+    console.log("query result:\n", qresult);
   });
   client.on('describe_statement',statement => {
     console.log("client_describe_statement:",statement);
   });
   client.on('describe_portal',statement => {
     console.log("client_describe_portal:",statement);
-    client.sendRowDescription(format_list);
+    client.sendRowDescription(resultMatrix.format);
   });
-  client.on('execute',(statement,max_rows) => {
-    console.log("client_execute:",statement, { max_rows });
-    const rows = [["foo"]];
-    client.sendDataRowList(rows,format_list);
+  client.on('execute', (statement,max_rows) => {
+    console.log("client_execute:\n",statement, "\nmax rows: ", max_rows, "\nresult:\n", resultMatrix);
+    client.sendDataRowList(resultMatrix.rows,resultMatrix.format);
     client.sendCommandComplete("SELECT",null,1);
   });
   client.on('flush',() => {
