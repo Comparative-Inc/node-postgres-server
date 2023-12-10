@@ -289,10 +289,10 @@ PgClient.prototype.sendRowDescription = function(field_list) {
   this._socket.write(buf);
 };
 PgClient.prototype.sendDataRowList = function(row_list,field_list) {
-  if (!Array.isArray(row_list)) {
+  if (!('forEach' in row_list)) {
     row_list = [row_list];
   }
-  if (!Array.isArray(field_list)) {
+  if (!('map' in field_list)) {
     field_list = [field_list];
   }
   const count = field_list.length;
@@ -308,11 +308,11 @@ PgClient.prototype.sendDataRowList = function(row_list,field_list) {
   });
 
   row_list.forEach(r => {
-    const is_array = Array.isArray(r);
+    const has_at = 'at' in r;
 
     this._buffer_writer.addInt16(count);
     format_list.forEach((f,i) => {
-      const val = is_array ? r[i] : r[f.name];
+      const val = has_at ? r.at(i) : r[f.name];
       f.writer(val,this._buffer_writer);
     });
 
