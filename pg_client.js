@@ -307,6 +307,10 @@ PgClient.prototype.sendDataRowList = function(row_list,field_list) {
     };
   });
 
+  const cumulative_buffer_size = 1536;
+  var cumulative_buffer = Buffer(cumulative_buffer_size);
+  var cumulative_buffer_offset = 0;
+
   row_list.forEach(r => {
     const has_at = 'at' in r;
 
@@ -317,8 +321,21 @@ PgClient.prototype.sendDataRowList = function(row_list,field_list) {
     });
 
     const buf = this._buffer_writer.flush('D');
-    this._socket.write(buf);
+    if (cumulative_buffer_offset + buf.length > cumulative_buffer_size) {
+      if (cumulative_buffer_offset > 0) {
+        this._socket.write(cumulative_buffer.subarray(0,cumulative_buffer_offset));
+      }
+      cumulative_buffer = Buffer(cumulative_buffer_size > buf.length ? cumulative_buffer_size : buf.length);
+      buf.copy(cumulative_buffer);
+      cumulative_buffer_offset = buf.length;
+      return;
+    }
+    buf.copy(cumulative_buffer,cumulative_buffer_offset);
+    cumulative_buffer_offset += buf.length;
   });
+  if (cumulative_buffer_offset > 0) {
+    this._socket.write(cumulative_buffer.subarray(0,cumulative_buffer_offset));
+  }
 };
 PgClient.prototype.sendCommandComplete = function(tag,a,b) {
   let s = tag || "SELECT";
