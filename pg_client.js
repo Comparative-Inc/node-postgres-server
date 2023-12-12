@@ -350,6 +350,11 @@ PgClient.prototype.sendCommandComplete = function(tag,a,b) {
   this._socket.write(buf);
 };
 
+PgClient.prototype.sendEmptyQueryResponse = function() {
+  const buf = this._buffer_writer.flush('I');
+  this._socket.write(buf);
+};
+
 function write_error_map(error_map,writer) {
   Object.keys(error_map).forEach(k => {
     const v = error_map[k].toString();
